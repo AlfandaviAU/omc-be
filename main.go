@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/davi/omc-be/database"
 	"github.com/davi/omc-be/handlers"
@@ -65,8 +66,12 @@ func main() {
 		}
 	}
 
-	log.Println("Server running on port 8081")
-	if err := r.Run(":8081"); err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8081"
+	}
+	log.Println("Server running on port " + port)
+	if err := r.Run(":" + port); err != nil {
 		log.Fatal(err)
 	}
 }
