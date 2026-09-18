@@ -1,0 +1,11 @@
+UPDATE products SET name = 'Vektor KVR' WHERE name = 'Vector (KVR)';
+UPDATE products SET name = 'P50' WHERE name = 'Pistol .50';
+UPDATE products SET name = 'Shotgun' WHERE name = 'SG Pump';
+UPDATE products SET name = 'Tactical Suppressor' WHERE name = 'Tactical Sup';
+UPDATE products SET name = 'Suppressor' WHERE name = 'Supresor';
+UPDATE products SET name = 'Extended Rifle Mag' WHERE name = 'Extended Riffle';
+UPDATE products SET name = 'Rifle Drum Mag' WHERE name = 'Riffle Drum';
+UPDATE products SET name = 'Extended SMG Mag' WHERE name = 'Extended SMG Clip';
+UPDATE products SET name = 'Extended Pistol Mag' WHERE name = 'Extended Pistol Clip';
+UPDATE products SET name = 'SMG Drum Mag' WHERE name = 'SMG Drum';
+UPDATE products SET name = 'Ceramic' WHERE name = 'Ceramic Pistol';
