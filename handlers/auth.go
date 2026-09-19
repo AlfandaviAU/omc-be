@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/davi/omc-be/database"
 	"github.com/davi/omc-be/middleware"
@@ -142,6 +143,12 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
+	input.PhotoURL = strings.TrimSpace(input.PhotoURL)
+	if !IsValidImageURL(input.PhotoURL) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid photo URL format"})
+		return
+	}
+
 	user := models.User{
 		Username: input.Username,
 		Password: string(hashedPassword),
@@ -182,17 +189,16 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
+	input.PhotoURL = strings.TrimSpace(input.PhotoURL)
+	if !IsValidImageURL(input.PhotoURL) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid photo URL format"})
+		return
+	}
+
 	if input.Role != "" {
 		user.Role = input.Role
 	}
-	// Always allow updating photo URL (can be empty string)
-	if input.PhotoURL != "" {
-		user.PhotoURL = input.PhotoURL
-	} else if c.Request.ContentLength > 0 {
-		// If photo_url is explicitly sent as empty, we can clear it. Let's just assume if it's in the request we update it.
-		// A better way is checking if it exists in JSON, but simple binding is fine for this use case if we always send it.
-		user.PhotoURL = input.PhotoURL
-	}
+	user.PhotoURL = input.PhotoURL
 	
 	if err := database.DB.Save(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})

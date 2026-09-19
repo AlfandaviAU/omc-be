@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/davi/omc-be/database"
 	"github.com/davi/omc-be/models"
@@ -25,6 +26,12 @@ func CreateOrder(c *gin.Context) {
 	var input OrderInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	input.ProofImage = strings.TrimSpace(input.ProofImage)
+	if !IsValidDiscordImageURL(input.ProofImage) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Proof image must be a valid Discord CDN URL"})
 		return
 	}
 
