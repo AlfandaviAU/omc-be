@@ -60,7 +60,7 @@ func main() {
 		adminOnly.Use(middleware.AuthMiddleware("admin"))
 		{
 			adminOnly.POST("/users", handlers.CreateUser)
-			adminOnly.PUT("/users/:id", handlers.UpdateUserRole)
+			adminOnly.PUT("/users/:id", handlers.UpdateUser)
 			adminOnly.DELETE("/users/:id", handlers.DeleteUser)
 		}
 	}

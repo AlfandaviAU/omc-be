@@ -128,8 +128,39 @@ func UpdateOrderStatus(c *gin.Context) {
 	}
 
 	var order models.Order
-	if err := database.DB.First(&order, id).Error; err != nil {
+	// Preload items so we can revert stock if needed
+	if err := database.DB.Preload("Items").First(&order, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		return
+	}
+
+	if order.Status == "completed" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Order is already completed and locked"})
+		return
+	}
+
+	if input.Status == "rejected" {
+		tx := database.DB.Begin()
+		// Revert the stock
+		for _, item := range order.Items {
+			var product models.Product
+			if err := tx.First(&product, item.ProductID).Error; err == nil {
+				product.Stock += item.Quantity
+				tx.Save(&product)
+			}
+		}
+		// Hard delete the order and its items
+		tx.Unscoped().Where("order_id = ?", order.ID).Delete(&models.OrderItem{})
+		if err := tx.Unscoped().Delete(&order).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete rejected order"})
+			return
+		}
+		tx.Commit()
+
+		Broadcast("update_orders")
+		Broadcast("update_products")
+		c.JSON(http.StatusOK, gin.H{"message": "Order rejected, deleted, and stock reverted"})
 		return
 	}
 
@@ -150,10 +181,37 @@ func UpdateOrderStatus(c *gin.Context) {
 
 func DeleteOrder(c *gin.Context) {
 	id := c.Param("id")
-	if err := database.DB.Delete(&models.Order{}, id).Error; err != nil {
+
+	var order models.Order
+	if err := database.DB.Preload("Items").First(&order, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		return
+	}
+
+	if order.Status == "completed" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Order is already completed and locked from deletion"})
+		return
+	}
+
+	tx := database.DB.Begin()
+	// Revert the stock upon manual deletion as well
+	for _, item := range order.Items {
+		var product models.Product
+		if err := tx.First(&product, item.ProductID).Error; err == nil {
+			product.Stock += item.Quantity
+			tx.Save(&product)
+		}
+	}
+	
+	tx.Unscoped().Where("order_id = ?", order.ID).Delete(&models.OrderItem{})
+	if err := tx.Unscoped().Delete(&order).Error; err != nil {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete order"})
 		return
 	}
+	tx.Commit()
+
 	Broadcast("update_orders")
-	c.JSON(http.StatusOK, gin.H{"message": "Order deleted"})
+	Broadcast("update_products")
+	c.JSON(http.StatusOK, gin.H{"message": "Order deleted and stock reverted"})
 }

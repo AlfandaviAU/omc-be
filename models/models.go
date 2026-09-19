@@ -7,6 +7,7 @@ type User struct {
 	Username string `gorm:"uniqueIndex;not null" json:"username"`
 	Password string `gorm:"not null" json:"-"`
 	Role     string `gorm:"not null;default:'member'" json:"role"` // admin, sgt, member
+	PhotoURL string `json:"photo_url"`
 }
 
 type Product struct {

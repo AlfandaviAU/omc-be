@@ -82,7 +82,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token, "role": user.Role})
+	c.JSON(http.StatusOK, gin.H{"token": token, "role": user.Role, "username": user.Username})
 }
 
 func GetMe(c *gin.Context) {
@@ -114,7 +114,12 @@ func GetSgts(c *gin.Context) {
 }
 
 func CreateUser(c *gin.Context) {
-	var input RegisterInput
+	var input struct {
+		Username string `json:"username" binding:"required"`
+		Password string `json:"password" binding:"required"`
+		Role     string `json:"role"`
+		PhotoURL string `json:"photo_url"`
+	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -141,6 +146,7 @@ func CreateUser(c *gin.Context) {
 		Username: input.Username,
 		Password: string(hashedPassword),
 		Role:     input.Role,
+		PhotoURL: input.PhotoURL,
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
@@ -151,12 +157,13 @@ func CreateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User created successfully"})
 }
 
-func UpdateUserRole(c *gin.Context) {
+func UpdateUser(c *gin.Context) {
 	id := c.Param("id")
 	currentUserID, _ := c.Get("user_id")
 
 	var input struct {
-		Role string `json:"role" binding:"required"`
+		Role     string `json:"role"`
+		PhotoURL string `json:"photo_url"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -169,19 +176,30 @@ func UpdateUserRole(c *gin.Context) {
 		return
 	}
 
-	// Prevent changing own role
-	if user.ID == currentUserID.(uint) {
+	// Prevent changing own role if a role is provided
+	if input.Role != "" && user.ID == currentUserID.(uint) && user.Role != input.Role {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Cannot change your own role"})
 		return
 	}
 
-	user.Role = input.Role
+	if input.Role != "" {
+		user.Role = input.Role
+	}
+	// Always allow updating photo URL (can be empty string)
+	if input.PhotoURL != "" {
+		user.PhotoURL = input.PhotoURL
+	} else if c.Request.ContentLength > 0 {
+		// If photo_url is explicitly sent as empty, we can clear it. Let's just assume if it's in the request we update it.
+		// A better way is checking if it exists in JSON, but simple binding is fine for this use case if we always send it.
+		user.PhotoURL = input.PhotoURL
+	}
+	
 	if err := database.DB.Save(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user role"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User role updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
 }
 
 func DeleteUser(c *gin.Context) {
