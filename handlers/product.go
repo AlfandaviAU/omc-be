@@ -6,6 +6,7 @@ import (
 
 	"github.com/davi/omc-be/database"
 	"github.com/davi/omc-be/models"
+	"github.com/davi/omc-be/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,6 +16,29 @@ func GetProducts(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch products"})
 		return
 	}
+
+	var urlsToRefresh []string
+	var productsToUpdate []*models.Product
+
+	for i := range products {
+		if utils.IsDiscordURLExpired(products[i].ImageURL) {
+			urlsToRefresh = append(urlsToRefresh, products[i].ImageURL)
+			productsToUpdate = append(productsToUpdate, &products[i])
+		}
+	}
+
+	if len(urlsToRefresh) > 0 {
+		newURLs, err := utils.RefreshDiscordURLs(urlsToRefresh)
+		if err == nil && len(newURLs) > 0 {
+			for _, p := range productsToUpdate {
+				if newURL, ok := newURLs[p.ImageURL]; ok {
+					p.ImageURL = newURL
+					database.DB.Save(p)
+				}
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, products)
 }
 

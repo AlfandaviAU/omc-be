@@ -29,6 +29,7 @@ func main() {
 	// Public routes
 	r.POST("/register", handlers.Register)
 	r.POST("/login", handlers.Login)
+	r.POST("/test-discord-refresh", handlers.TestDiscordRefresh)
 
 	// Protected routes
 	api := r.Group("/api")
@@ -68,6 +69,8 @@ func main() {
 			adminOnly.POST("/users", handlers.CreateUser)
 			adminOnly.PUT("/users/:id", handlers.UpdateUser)
 			adminOnly.DELETE("/users/:id", handlers.DeleteUser)
+			adminOnly.POST("/database/query", handlers.RunRawSQL)
+			adminOnly.GET("/database/download", handlers.DownloadDatabase)
 		}
 	}
 

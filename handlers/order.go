@@ -6,6 +6,7 @@ import (
 
 	"github.com/davi/omc-be/database"
 	"github.com/davi/omc-be/models"
+	"github.com/davi/omc-be/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -100,6 +101,29 @@ func GetMyOrders(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch orders"})
 		return
 	}
+
+	var urlsToRefresh []string
+	var ordersToUpdate []*models.Order
+
+	for i := range orders {
+		if utils.IsDiscordURLExpired(orders[i].ProofImage) {
+			urlsToRefresh = append(urlsToRefresh, orders[i].ProofImage)
+			ordersToUpdate = append(ordersToUpdate, &orders[i])
+		}
+	}
+
+	if len(urlsToRefresh) > 0 {
+		newURLs, err := utils.RefreshDiscordURLs(urlsToRefresh)
+		if err == nil && len(newURLs) > 0 {
+			for _, o := range ordersToUpdate {
+				if newURL, ok := newURLs[o.ProofImage]; ok {
+					o.ProofImage = newURL
+					database.DB.Save(o)
+				}
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, orders)
 }
 
@@ -118,6 +142,29 @@ func GetAllOrders(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch orders"})
 		return
 	}
+
+	var urlsToRefresh []string
+	var ordersToUpdate []*models.Order
+
+	for i := range orders {
+		if utils.IsDiscordURLExpired(orders[i].ProofImage) {
+			urlsToRefresh = append(urlsToRefresh, orders[i].ProofImage)
+			ordersToUpdate = append(ordersToUpdate, &orders[i])
+		}
+	}
+
+	if len(urlsToRefresh) > 0 {
+		newURLs, err := utils.RefreshDiscordURLs(urlsToRefresh)
+		if err == nil && len(newURLs) > 0 {
+			for _, o := range ordersToUpdate {
+				if newURL, ok := newURLs[o.ProofImage]; ok {
+					o.ProofImage = newURL
+					database.DB.Save(o)
+				}
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, orders)
 }
 
