@@ -1,0 +1,15 @@
+--- handlers/analytics.go
++++ handlers/analytics.go
+@@ -40,11 +40,13 @@
+ 
+ 	// Top 5 products by total quantity ordered
+ 	db.Model(&models.OrderItem{}).
+ 		Select("products.name as product_name, SUM(order_items.quantity) as total_qty, SUM(order_items.price * order_items.quantity) as total_revenue").
+ 		Joins("JOIN products ON products.id = order_items.product_id").
++		Joins("JOIN orders ON orders.id = order_items.order_id").
++		Where("orders.deleted_at IS NULL AND orders.status IN ('approved', 'completed')").
+ 		Group("order_items.product_id, products.name").
+ 		Order("total_qty DESC").
+ 		Limit(5).
+ 		Scan(&resp.TopProducts)
+ 

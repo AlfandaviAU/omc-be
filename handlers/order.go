@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -12,11 +13,11 @@ import (
 
 type OrderItemInput struct {
 	ProductID uint `json:"product_id" binding:"required"`
-	Quantity  int  `json:"quantity" binding:"required"`
+	Quantity  int  `json:"quantity" binding:"required,min=1"`
 }
 
 type OrderInput struct {
-	Items         []OrderItemInput `json:"items" binding:"required,min=1"`
+	Items         []OrderItemInput `json:"items" binding:"required,min=1,dive"`
 	ProofImage    string           `json:"proof_image" binding:"required"`
 	DestinationID uint             `json:"destination_id" binding:"required"`
 }
@@ -38,6 +39,13 @@ func CreateOrder(c *gin.Context) {
 
 	tx := database.DB.Begin()
 
+	usage, err := loadLimitUsage(tx, userID.(uint))
+	if err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check purchase limits"})
+		return
+	}
+
 	var totalAmount float64
 	var orderItems []models.OrderItem
 
@@ -53,6 +61,16 @@ func CreateOrder(c *gin.Context) {
 			tx.Rollback()
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Insufficient stock for " + product.Name})
 			return
+		}
+
+		if limit, limited := usage.Limits[product.ID]; limited {
+			left := limit - usage.Purchased[product.ID]
+			if item.Quantity > left {
+				tx.Rollback()
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Weekly limit reached for %s: %d left this week", product.Name, max(left, 0))})
+				return
+			}
+			usage.Purchased[product.ID] += item.Quantity
 		}
 
 		// Deduct stock

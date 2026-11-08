@@ -13,6 +13,7 @@ import (
 var app *gin.Engine
 
 func init() {
+	middleware.LoadSecretKey()
 	database.Connect()
 
 	r := gin.Default()
@@ -41,6 +42,7 @@ func init() {
 		// Member routes
 		apiGroup.POST("/orders", handlers.CreateOrder)
 		apiGroup.GET("/orders/me", handlers.GetMyOrders)
+		apiGroup.GET("/purchase-limits/me", handlers.GetMyPurchaseLimits)
 
 		// Admin & SGT routes
 		adminOfficer := apiGroup.Group("/")
@@ -55,6 +57,9 @@ func init() {
 			adminOfficer.DELETE("/orders/:id", handlers.DeleteOrder)
 			adminOfficer.GET("/analytics", handlers.GetAnalytics)
 			adminOfficer.GET("/users", handlers.GetAllUsers)
+			adminOfficer.GET("/purchase-limits", handlers.GetPurchaseLimits)
+			adminOfficer.PUT("/purchase-limits", handlers.UpdatePurchaseLimits)
+			adminOfficer.PUT("/weapon-attachments", handlers.UpdateWeaponAttachments)
 		}
 
 		// Admin only routes
@@ -63,6 +68,7 @@ func init() {
 		{
 			adminOnly.POST("/users", handlers.CreateUser)
 			adminOnly.PUT("/users/:id", handlers.UpdateUserRole)
+			adminOnly.PUT("/users/:id/rank", handlers.UpdateUserRank)
 			adminOnly.DELETE("/users/:id", handlers.DeleteUser)
 		}
 	}

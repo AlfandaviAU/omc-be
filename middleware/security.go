@@ -30,8 +30,8 @@ func getVisitor(ip string) *rate.Limiter {
 
 	limiter, exists := visitors[ip]
 	if !exists {
-		// Allow 5 requests per second with a burst of 10
-		limiter = rate.NewLimiter(5, 10)
+		// Allow 20 requests per second with a burst of 50 to accommodate frontend parallel loading
+		limiter = rate.NewLimiter(20, 50)
 		visitors[ip] = limiter
 	}
 

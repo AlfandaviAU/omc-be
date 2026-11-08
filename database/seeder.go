@@ -11,7 +11,6 @@ import (
 func Seed() {
 	seedUsers()
 	seedProducts()
-	seedWeaponAttachments()
 
 	// Dev-only seeding
 	if os.Getenv("GIN_MODE") != "release" {
@@ -107,58 +106,6 @@ func seedProducts() {
 		log.Fatal("Failed to seed products:", err)
 	}
 	log.Println("Seeded", len(products), "products")
-}
-
-func seedWeaponAttachments() {
-	var count int64
-	DB.Model(&models.WeaponAttachment{}).Count(&count)
-	if count > 0 {
-		return
-	}
-
-	attachments := []models.WeaponAttachment{
-		{WeaponName: "Virtus", AttachmentName: "Tactical Flashlight"},
-		{WeaponName: "Virtus", AttachmentName: "Tactical Suppressor"},
-		{WeaponName: "Virtus", AttachmentName: "Extended Rifle Mag"},
-		{WeaponName: "Virtus", AttachmentName: "Medium Scope"},
-		{WeaponName: "Vektor KVR", AttachmentName: "Tactical Suppressor"},
-		{WeaponName: "Vektor KVR", AttachmentName: "Grip"},
-		{WeaponName: "Vektor KVR", AttachmentName: "Medium Scope"},
-		{WeaponName: "X17", AttachmentName: "Tactical Flashlight"},
-		{WeaponName: "P50", AttachmentName: "Tactical Suppressor"},
-		{WeaponName: "P50", AttachmentName: "Extended Pistol Mag"},
-		{WeaponName: "Machine Pistol", AttachmentName: "SMG Drum Mag"},
-		{WeaponName: "Machine Pistol", AttachmentName: "Suppressor"},
-		{WeaponName: "Mini SMG", AttachmentName: "Extended SMG Mag"},
-		{WeaponName: "Micro SMG", AttachmentName: "Tactical Suppressor"},
-		{WeaponName: "Micro SMG", AttachmentName: "Tactical Flashlight"},
-		{WeaponName: "Micro SMG", AttachmentName: "Extended SMG Mag"},
-		{WeaponName: "Micro SMG", AttachmentName: "Macro Scope"},
-		{WeaponName: "SMG", AttachmentName: "SMG Drum Mag"},
-		{WeaponName: "SMG", AttachmentName: "Suppressor"},
-		{WeaponName: "SMG", AttachmentName: "Tactical Flashlight"},
-		{WeaponName: "SMG", AttachmentName: "Macro Scope"},
-		{WeaponName: "Shotgun", AttachmentName: "Tactical Suppressor"},
-		{WeaponName: "Shotgun", AttachmentName: "Tactical Flashlight"},
-		{WeaponName: "Carbine", AttachmentName: "Extended Rifle Mag"},
-		{WeaponName: "Carbine", AttachmentName: "Rifle Drum Mag"},
-		{WeaponName: "Carbine", AttachmentName: "Medium Scope"},
-		{WeaponName: "Carbine", AttachmentName: "Grip"},
-		{WeaponName: "Carbine", AttachmentName: "Tactical Suppressor"},
-		{WeaponName: "AK", AttachmentName: "Tactical Flashlight"},
-		{WeaponName: "AK", AttachmentName: "Grip"},
-		{WeaponName: "AK", AttachmentName: "Rifle Drum Mag"},
-		{WeaponName: "AK", AttachmentName: "Extended Rifle Mag"},
-		{WeaponName: "AK", AttachmentName: "Macro Scope"},
-		{WeaponName: "AK", AttachmentName: "Tactical Suppressor"},
-		{WeaponName: "Ceramic", AttachmentName: "Extended Pistol Mag"},
-		{WeaponName: "Ceramic", AttachmentName: "Suppressor"},
-	}
-
-	if err := DB.Create(&attachments).Error; err != nil {
-		log.Fatal("Failed to seed weapon attachments:", err)
-	}
-	log.Println("Seeded", len(attachments), "weapon attachments")
 }
 
 // seedDevData populates stock for development

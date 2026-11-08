@@ -2,7 +2,9 @@ package middleware
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -10,7 +12,17 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var SecretKey = []byte("super_secret_key_change_me")
+var SecretKey []byte
+
+// LoadSecretKey must run before any token is signed or checked.
+// It stops the server when JWT_SECRET is missing so tokens can never be signed with an empty key.
+func LoadSecretKey() {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		log.Fatal("JWT_SECRET is not set")
+	}
+	SecretKey = []byte(secret)
+}
 
 func GenerateToken(userID uint, role string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{

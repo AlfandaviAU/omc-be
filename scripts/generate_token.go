@@ -2,16 +2,19 @@ package main
 
 import (
 	"fmt"
-	"time"
-	"github.com/golang-jwt/jwt/v5"
+	"log"
+
+	"github.com/davi/omc-be/middleware"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": 1,
-		"role":    "admin",
-		"exp":     time.Now().Add(time.Hour * 72).Unix(),
-	})
-	signed, _ := token.SignedString([]byte("super_secret_key_change_me"))
+	_ = godotenv.Load()
+	middleware.LoadSecretKey()
+
+	signed, err := middleware.GenerateToken(1, "admin")
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println(signed)
 }

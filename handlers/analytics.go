@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/davi/omc-be/database"
 	"github.com/davi/omc-be/models"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type TopProduct struct {
@@ -45,18 +47,40 @@ func GetAnalytics(c *gin.Context) {
 	db := database.DB
 	var resp AnalyticsResponse
 
+	var sgtID uint64
+	if raw := c.Query("sgt_id"); raw != "" {
+		parsed, err := strconv.ParseUint(raw, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid sgt_id"})
+			return
+		}
+		sgtID = parsed
+	}
+
+	// Reviewed orders belong to the SGT who verified them, matching Revenue by SGT.
+	// Unreviewed orders belong to the SGT they are waiting on.
+	bySgt := func(q *gorm.DB) *gorm.DB {
+		if sgtID == 0 {
+			return q
+		}
+		return q.Where("(orders.verifier_id = ? OR (orders.verifier_id IS NULL AND orders.destination_id = ?))", sgtID, sgtID)
+	}
+	orders := func() *gorm.DB {
+		return db.Model(&models.Order{}).Scopes(bySgt)
+	}
+
 	// Total revenue from approved + completed orders
-	db.Model(&models.Order{}).
+	orders().
 		Where("status IN ?", []string{"approved", "completed"}).
 		Select("COALESCE(SUM(total_amount), 0)").
 		Scan(&resp.TotalRevenue)
 
 	// Order counts
-	db.Model(&models.Order{}).Count(&resp.TotalOrders)
-	db.Model(&models.Order{}).Where("status = ?", "pending").Count(&resp.PendingOrders)
-	db.Model(&models.Order{}).Where("status = ?", "approved").Count(&resp.ApprovedOrders)
-	db.Model(&models.Order{}).Where("status = ?", "completed").Count(&resp.CompletedOrders)
-	db.Model(&models.Order{}).Where("status = ?", "rejected").Count(&resp.RejectedOrders)
+	orders().Count(&resp.TotalOrders)
+	orders().Where("status = ?", "pending").Count(&resp.PendingOrders)
+	orders().Where("status = ?", "approved").Count(&resp.ApprovedOrders)
+	orders().Where("status = ?", "completed").Count(&resp.CompletedOrders)
+	orders().Where("status = ?", "rejected").Count(&resp.RejectedOrders)
 
 	// Total members
 	db.Model(&models.User{}).Where("role = ?", "member").Count(&resp.TotalMembers)
@@ -65,13 +89,16 @@ func GetAnalytics(c *gin.Context) {
 	db.Model(&models.OrderItem{}).
 		Select("products.name as product_name, SUM(order_items.quantity) as total_qty, SUM(order_items.price * order_items.quantity) as total_revenue").
 		Joins("JOIN products ON products.id = order_items.product_id").
+		Joins("JOIN orders ON orders.id = order_items.order_id").
+		Where("orders.deleted_at IS NULL AND orders.status IN ('approved', 'completed')").
+		Scopes(bySgt).
 		Group("order_items.product_id, products.name").
 		Order("total_qty DESC").
 		Limit(5).
 		Scan(&resp.TopProducts)
 
 	// Recent 10 orders with username
-	db.Model(&models.Order{}).
+	orders().
 		Select("orders.id, users.username, orders.total_amount, orders.status, orders.created_at").
 		Joins("JOIN users ON users.id = orders.user_id").
 		Order("orders.created_at DESC").
@@ -79,7 +106,7 @@ func GetAnalytics(c *gin.Context) {
 		Scan(&resp.RecentOrders)
 
 	// Revenue by verifier
-	db.Model(&models.Order{}).
+	orders().
 		Select("users.username as verifier_name, COUNT(orders.id) as order_count, COALESCE(SUM(orders.total_amount), 0) as total_revenue").
 		Joins("JOIN users ON users.id = orders.verifier_id").
 		Where("orders.status IN ?", []string{"approved", "completed"}).
